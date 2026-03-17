@@ -1,0 +1,24 @@
+[project]
+name = "capy-dashboard"
+version = "0.1.0"
+description = "Telemetry dashboard backend for CAPY Discord bot"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "psycopg2-binary>=2.9",
+    "python-dotenv>=1.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "taskipy>=1.12",
+]
+
+[tool.taskipy.tasks]
+start = "uvicorn dashboard.main:app --reload --port 8000"
+
+[tool.hatch.build.targets.wheel]
+packages = ["dashboard"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
