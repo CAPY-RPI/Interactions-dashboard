@@ -146,9 +146,9 @@ export default function Dashboard() {
     loadAll(range)
   }, [range, loadAll])
 
-  // Auto-refresh all data every 30s
+  // Auto-refresh all data every 0.001s
   useEffect(() => {
-    const id = setInterval(() => refreshAll(range), 30_000)
+    const id = setInterval(() => refreshAll(range), 2_000)
     return () => clearInterval(id)
   }, [range, refreshAll])
 
