@@ -8,6 +8,7 @@ from dashboard.models import (
     BatchRequest,
     CommandStat,
     ErrorStat,
+    HeatmapPoint,
     InteractionTypeStat,
     MetricSummary,
     RecentEvent,
@@ -109,3 +110,11 @@ def get_interaction_types(range: str = Query("7d", description="Time range: 24h,
     if settings.use_mock:
         return mock_data.get_interaction_types(days)
     return database.get_interaction_types(days)
+
+
+@router.get("/heatmap", response_model=list[HeatmapPoint])
+def get_heatmap(range: str = Query("7d", description="Time range: 24h, 7d, or 30d")):
+    days = _range_days(range)
+    if settings.use_mock:
+        return mock_data.get_heatmap(days)
+    return database.get_heatmap(days)

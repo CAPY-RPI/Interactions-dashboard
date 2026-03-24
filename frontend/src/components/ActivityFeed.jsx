@@ -19,17 +19,42 @@ function StatusBadge({ status }) {
   )
 }
 
+import { useState } from 'react'
+
+const LIMIT_OPTIONS = [10, 25, 50]
+
 function formatTimestamp(iso) {
   const d = new Date(iso)
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 export default function ActivityFeed({ data }) {
+  const [limit, setLimit] = useState(25)
+  const visible = data.slice(0, limit)
+
   return (
     <div className="bg-[#161b27] rounded-xl border border-[#2a3147] p-5">
-      <h2 className="text-[#f1f5f9] font-semibold text-sm uppercase tracking-wider mb-4">
-        Recent Activity
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-[#f1f5f9] font-semibold text-sm uppercase tracking-wider">
+          Recent Activity
+        </h2>
+        <div className="flex items-center gap-1">
+          <span className="text-[#64748b] text-xs mr-1">Show</span>
+          {LIMIT_OPTIONS.map((n) => (
+            <button
+              key={n}
+              onClick={() => setLimit(n)}
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                limit === n
+                  ? 'bg-[#7c3aed] text-white'
+                  : 'text-[#64748b] hover:text-[#f1f5f9] hover:bg-[#2a3147]'
+              }`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -44,14 +69,14 @@ export default function ActivityFeed({ data }) {
             </tr>
           </thead>
           <tbody>
-            {data.length === 0 ? (
+            {visible.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-8 text-center text-[#64748b] text-sm">
                   No recent activity
                 </td>
               </tr>
             ) : (
-              data.map((row, i) => (
+              visible.map((row, i) => (
                 <tr
                   key={i}
                   className="border-b border-[#2a3147]/50 hover:bg-[#1e2435]/50 transition-colors"

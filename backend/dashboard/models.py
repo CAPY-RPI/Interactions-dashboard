@@ -75,3 +75,9 @@ class RecentEvent(BaseModel):
     status: str | None
     duration_ms: float | None
     error_type: str | None
+
+
+class HeatmapPoint(BaseModel):
+    dow: int    # 0=Sunday, 6=Saturday (Postgres EXTRACT(DOW) convention)
+    hour: int   # 0-23 UTC
+    count: int

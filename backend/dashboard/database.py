@@ -8,6 +8,7 @@ from dashboard.models import (
     CommandStat,
     CompletionEventIn,
     ErrorStat,
+    HeatmapPoint,
     InteractionEventIn,
     InteractionTypeStat,
     MetricSummary,
@@ -226,6 +227,27 @@ def get_timeseries(range_days: int) -> list[TimeSeriesPoint]:
             modal=counts["modal"],
         )
         for bucket, counts in sorted(pivot.items())
+    ]
+
+
+def get_heatmap(range_days: int) -> list[HeatmapPoint]:
+    query = """
+        SELECT
+            EXTRACT(DOW FROM timestamp)::int AS dow,
+            EXTRACT(HOUR FROM timestamp)::int AS hour,
+            COUNT(*) AS count
+        FROM telemetry_interactions
+        WHERE timestamp > NOW() - (%s || ' days')::INTERVAL
+        GROUP BY dow, hour
+        ORDER BY dow, hour
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (str(range_days),))
+            rows = cur.fetchall()
+    return [
+        HeatmapPoint(dow=int(r["dow"]), hour=int(r["hour"]), count=int(r["count"]))
+        for r in rows
     ]
 
 

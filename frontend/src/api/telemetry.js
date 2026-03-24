@@ -28,3 +28,7 @@ export function fetchInteractionTypes(range) {
 export function fetchRecent() {
   return api.get('/recent').then((r) => r.data)
 }
+
+export function fetchHeatmap(range) {
+  return api.get('/heatmap', { params: { range } }).then((r) => r.data)
+}
