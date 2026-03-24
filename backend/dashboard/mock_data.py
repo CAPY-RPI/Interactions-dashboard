@@ -14,6 +14,7 @@ from dashboard.models import (
     ErrorStat,
     InteractionTypeStat,
     MetricSummary,
+    RecentEvent,
     TimeSeriesPoint,
 )
 
@@ -189,20 +190,39 @@ def get_timeseries(days: int) -> list[TimeSeriesPoint]:
     records = _filter(days)
     pivot: dict[str, dict[str, int]] = {}
     for r in records:
-        day_str = r["timestamp"].date().isoformat()
+        if days == 1:
+            key = r["timestamp"].strftime("%Y-%m-%dT%H:00")
+        else:
+            key = r["timestamp"].date().isoformat()
         itype = r["interaction_type"]
-        pivot.setdefault(day_str, {"slash_command": 0, "button": 0, "modal": 0})
-        if itype in pivot[day_str]:
-            pivot[day_str][itype] += 1
+        pivot.setdefault(key, {"slash_command": 0, "button": 0, "modal": 0})
+        if itype in pivot[key]:
+            pivot[key][itype] += 1
 
     return [
         TimeSeriesPoint(
-            timestamp=day,
+            timestamp=bucket,
             slash_command=counts["slash_command"],
             button=counts["button"],
             modal=counts["modal"],
         )
-        for day, counts in sorted(pivot.items())
+        for bucket, counts in sorted(pivot.items())
+    ]
+
+
+def get_recent() -> list[RecentEvent]:
+    records = sorted(_DATASET, key=lambda r: r["timestamp"], reverse=True)[:50]
+    return [
+        RecentEvent(
+            timestamp=r["timestamp"].isoformat(),
+            user_id="..." + str(r["user_id"])[-4:],
+            interaction_type=r["interaction_type"],
+            command_name=r["command_name"],
+            status=r["status"],
+            duration_ms=r["duration_ms"],
+            error_type=r["error_type"],
+        )
+        for r in records
     ]
 
 

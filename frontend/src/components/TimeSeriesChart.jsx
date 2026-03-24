@@ -16,7 +16,10 @@ const COLORS = {
 }
 
 function formatDate(dateStr, range) {
-  const d = new Date(dateStr + 'T00:00:00Z')
+  // hourly: "2026-03-20T14:00" — already has time component
+  // daily:  "2026-03-20"       — needs time appended for UTC parse
+  const iso = dateStr.includes('T') ? dateStr + ':00Z' : dateStr + 'T00:00:00Z'
+  const d = new Date(iso)
   if (range === '24h') {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
