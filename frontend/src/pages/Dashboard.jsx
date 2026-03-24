@@ -5,12 +5,14 @@ import TimeSeriesChart from '../components/TimeSeriesChart.jsx'
 import CommandTable from '../components/CommandTable.jsx'
 import ErrorBreakdown from '../components/ErrorBreakdown.jsx'
 import InteractionTypeChart from '../components/InteractionTypeChart.jsx'
+import ActivityFeed from '../components/ActivityFeed.jsx'
 import {
   fetchMetrics,
   fetchCommands,
   fetchTimeseries,
   fetchErrors,
   fetchInteractionTypes,
+  fetchRecent,
 } from '../api/telemetry.js'
 
 function SkeletonCard() {
@@ -85,6 +87,7 @@ export default function Dashboard() {
   const [timeseries, setTimeseries] = useState(null)
   const [errors, setErrors] = useState(null)
   const [interactionTypes, setInteractionTypes] = useState(null)
+  const [recent, setRecent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -92,18 +95,20 @@ export default function Dashboard() {
     setLoading(true)
     setError(null)
     try {
-      const [m, c, ts, e, it] = await Promise.all([
+      const [m, c, ts, e, it, rec] = await Promise.all([
         fetchMetrics(r),
         fetchCommands(r),
         fetchTimeseries(r),
         fetchErrors(r),
         fetchInteractionTypes(r),
+        fetchRecent(),
       ])
       setMetrics(m)
       setCommands(c)
       setTimeseries(ts)
       setErrors(e)
       setInteractionTypes(it)
+      setRecent(rec)
     } catch (err) {
       setError(
         err.response?.data?.detail ||
@@ -115,9 +120,37 @@ export default function Dashboard() {
     }
   }, [])
 
+  const refreshAll = useCallback(async (r) => {
+    // Silent refresh — no loading skeletons, errors don't overwrite existing data
+    try {
+      const [m, c, ts, e, it, rec] = await Promise.all([
+        fetchMetrics(r),
+        fetchCommands(r),
+        fetchTimeseries(r),
+        fetchErrors(r),
+        fetchInteractionTypes(r),
+        fetchRecent(),
+      ])
+      setMetrics(m)
+      setCommands(c)
+      setTimeseries(ts)
+      setErrors(e)
+      setInteractionTypes(it)
+      setRecent(rec)
+    } catch {
+      // Silently ignore — stale data is better than an error banner on auto-refresh
+    }
+  }, [])
+
   useEffect(() => {
     loadAll(range)
   }, [range, loadAll])
+
+  // Auto-refresh all data every 30s
+  useEffect(() => {
+    const id = setInterval(() => refreshAll(range), 30_000)
+    return () => clearInterval(id)
+  }, [range, refreshAll])
 
   return (
     <div className="min-h-screen bg-[#0f1117] text-[#f1f5f9]">
@@ -175,6 +208,11 @@ export default function Dashboard() {
           ) : (
             interactionTypes && <InteractionTypeChart data={interactionTypes} />
           )}
+        </div>
+
+        {/* Row 5: Activity feed — full width */}
+        <div>
+          {loading ? <SkeletonBlock height="h-96" /> : <ActivityFeed data={recent || []} />}
         </div>
       </main>
     </div>

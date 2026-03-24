@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -34,3 +37,41 @@ class ErrorStat(BaseModel):
 class InteractionTypeStat(BaseModel):
     interaction_type: str
     count: int
+
+
+class InteractionEventIn(BaseModel):
+    type: Literal["interaction"]
+    correlation_id: str
+    timestamp: datetime
+    interaction_type: str
+    user_id: int
+    command_name: str | None = None
+    guild_id: int | None = None
+    guild_name: str | None = None
+    channel_id: int
+    options: dict = {}
+    bot_version: str = "unknown"
+
+
+class CompletionEventIn(BaseModel):
+    type: Literal["completion"]
+    correlation_id: str
+    timestamp: datetime
+    command_name: str
+    status: Literal["success", "user_error", "internal_error"]
+    duration_ms: float | None = None
+    error_type: str | None = None
+
+
+class BatchRequest(BaseModel):
+    events: list[InteractionEventIn | CompletionEventIn]
+
+
+class RecentEvent(BaseModel):
+    timestamp: str
+    user_id: str        # masked: "...1234"
+    interaction_type: str
+    command_name: str | None
+    status: str | None
+    duration_ms: float | None
+    error_type: str | None

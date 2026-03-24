@@ -1,18 +1,100 @@
+import json
+
 import psycopg2
 import psycopg2.extras
 
 from dashboard.config import settings
 from dashboard.models import (
     CommandStat,
+    CompletionEventIn,
     ErrorStat,
+    InteractionEventIn,
     InteractionTypeStat,
     MetricSummary,
+    RecentEvent,
     TimeSeriesPoint,
 )
 
 
 def get_connection():
     return psycopg2.connect(settings.database_url, cursor_factory=psycopg2.extras.RealDictCursor)
+
+
+def insert_interaction(conn, event: InteractionEventIn) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO telemetry_interactions
+                (correlation_id, timestamp, received_at, interaction_type, user_id,
+                 command_name, guild_id, guild_name, channel_id, options, bot_version)
+            VALUES (%s, %s, NOW(), %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                event.correlation_id,
+                event.timestamp,
+                event.interaction_type,
+                event.user_id,
+                event.command_name,
+                event.guild_id,
+                event.guild_name,
+                event.channel_id,
+                json.dumps(event.options),
+                event.bot_version,
+            ),
+        )
+
+
+def insert_completion(conn, event: CompletionEventIn) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO telemetry_completions
+                (correlation_id, timestamp, received_at, command_name, status, duration_ms, error_type)
+            VALUES (%s, %s, NOW(), %s, %s, %s, %s)
+            """,
+            (
+                event.correlation_id,
+                event.timestamp,
+                event.command_name,
+                event.status,
+                event.duration_ms,
+                event.error_type,
+            ),
+        )
+
+
+def get_recent() -> list[RecentEvent]:
+    query = """
+        SELECT
+            i.timestamp,
+            i.user_id,
+            i.interaction_type,
+            i.command_name,
+            c.status,
+            c.duration_ms,
+            c.error_type
+        FROM telemetry_interactions i
+        LEFT JOIN telemetry_completions c ON i.correlation_id = c.correlation_id
+        ORDER BY i.timestamp DESC
+        LIMIT 50
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+
+    return [
+        RecentEvent(
+            timestamp=row["timestamp"].isoformat(),
+            user_id="..." + str(row["user_id"])[-4:],
+            interaction_type=row["interaction_type"],
+            command_name=row["command_name"],
+            status=row["status"],
+            duration_ms=float(row["duration_ms"]) if row["duration_ms"] is not None else None,
+            error_type=row["error_type"],
+        )
+        for row in rows
+    ]
 
 
 def get_metrics(range_days: int) -> MetricSummary:
@@ -100,40 +182,50 @@ def get_commands(range_days: int) -> list[CommandStat]:
 
 
 def get_timeseries(range_days: int) -> list[TimeSeriesPoint]:
-    query = """
+    if range_days == 1:
+        trunc = "hour"
+        interval = "1 day"
+    else:
+        trunc = "day"
+        interval = f"{range_days} days"
+
+    query = f"""
         SELECT
-            DATE_TRUNC('day', timestamp) AS day,
+            DATE_TRUNC('{trunc}', timestamp) AS bucket,
             interaction_type,
             COUNT(*) AS count
         FROM telemetry_interactions
-        WHERE timestamp > NOW() - (%s || ' days')::INTERVAL
-        GROUP BY day, interaction_type
-        ORDER BY day
+        WHERE timestamp > NOW() - INTERVAL '{interval}'
+        GROUP BY bucket, interaction_type
+        ORDER BY bucket
     """
 
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(query, (str(range_days),))
+            cur.execute(query)
             rows = cur.fetchall()
 
     pivot: dict[str, dict[str, int]] = {}
     for row in rows:
-        day_str = row["day"].date().isoformat()
+        if range_days == 1:
+            bucket_str = row["bucket"].isoformat()[:16]  # "2026-03-20T14:00"
+        else:
+            bucket_str = row["bucket"].date().isoformat()
         itype = row["interaction_type"]
         count = int(row["count"])
-        if day_str not in pivot:
-            pivot[day_str] = {"slash_command": 0, "button": 0, "modal": 0}
-        if itype in pivot[day_str]:
-            pivot[day_str][itype] += count
+        if bucket_str not in pivot:
+            pivot[bucket_str] = {"slash_command": 0, "button": 0, "modal": 0}
+        if itype in pivot[bucket_str]:
+            pivot[bucket_str][itype] += count
 
     return [
         TimeSeriesPoint(
-            timestamp=day,
+            timestamp=bucket,
             slash_command=counts["slash_command"],
             button=counts["button"],
             modal=counts["modal"],
         )
-        for day, counts in sorted(pivot.items())
+        for bucket, counts in sorted(pivot.items())
     ]
 
 

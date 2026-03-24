@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CAPY Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Topbar ─────────────────────────────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-bottom: 1px solid #30363d;
+      position: sticky;
+      top: 0;
+      background: #0d1117;
+      z-index: 10;
+    }
+
+    .topbar-left { display: flex; align-items: center; gap: 10px; }
+
+    .logo-dot {
+      width: 10px; height: 10px;
+      background: #7c6af7;
+      border-radius: 50%;
+    }
+
+    .topbar-title { font-size: 14px; color: #8b949e; }
+    .topbar-title strong { color: #e6edf3; font-weight: 600; }
+
+    .topbar-right { display: flex; align-items: center; gap: 14px; }
+
+    .live-indicator {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: #3fb950;
+    }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    .pulse-dot {
+      width: 7px; height: 7px;
+      background: #3fb950;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .range-toggles {
+      display: flex;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .range-btn {
+      padding: 5px 14px;
+      font-size: 12px; color: #8b949e;
+      background: transparent; border: none;
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .range-btn:hover { background: #21262d; color: #e6edf3; }
+    .range-btn.active { background: #7c6af7; color: #fff; }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .main {
+      padding: 20px 24px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .panel-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8b949e;
+      margin-bottom: 14px;
+    }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+    .row-2 { display: grid; grid-template-columns: 1fr 260px; gap: 16px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+    .row-4 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .right-stack { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── KPI Cards ──────────────────────────────────────── */
+    .kpi-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-top-bar {
+      height: 3px;
+      position: absolute; top: 0; left: 0; right: 0;
+      border-radius: 10px 10px 0 0;
+    }
+
+    .kpi-label {
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: #8b949e;
+      margin-bottom: 10px;
+    }
+
+    .kpi-value {
+      font-size: 30px; font-weight: 700;
+      color: #e6edf3; line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .kpi-delta {
+      font-size: 12px;
+      display: flex; align-items: center; gap: 4px;
+    }
+
+    .delta-up   { color: #3fb950; }
+    .delta-down { color: #f85149; }
+
+    .kpi-sub { font-size: 11px; color: #8b949e; margin-top: 6px; }
+    .kpi-sub-green { color: #3fb950; font-weight: 600; }
+
+    /* ── Chart wrappers ─────────────────────────────────── */
+    .chart-wrap { position: relative; }
+
+    .chart-legend {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .legend-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: #8b949e;
+    }
+
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Active users ───────────────────────────────────── */
+    .active-users-count {
+      font-size: 48px; font-weight: 700;
+      color: #e6edf3; line-height: 1;
+      text-align: center; margin-bottom: 8px;
+    }
+
+    .active-users-label {
+      display: flex; align-items: center;
+      justify-content: center; gap: 6px;
+      font-size: 11px; color: #8b949e;
+    }
+
+    /* ── Commands table ─────────────────────────────────── */
+    .cmd-table { width: 100%; border-collapse: collapse; }
+
+    .cmd-table th {
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #8b949e;
+      padding: 0 12px 10px 0; text-align: left;
+      font-weight: 500;
+      border-bottom: 1px solid #21262d;
+    }
+
+    .cmd-table td {
+      padding: 10px 12px 10px 0;
+      border-bottom: 1px solid #21262d;
+      font-size: 13px; vertical-align: middle;
+    }
+
+    .cmd-table tr:last-child td { border-bottom: none; }
+    .row-warn { background: rgba(248, 81, 73, 0.03); }
+
+    .cmd-name {
+      font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+      color: #e6edf3;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .cmd-warn { color: #ef9f27; }
+
+    .latency-p95 { font-size: 11px; color: #8b949e; margin-top: 2px; }
+
+    .success-bar-wrap { display: flex; align-items: center; gap: 8px; }
+
+    .success-bar-bg {
+      width: 60px; height: 5px;
+      background: #21262d; border-radius: 3px; overflow: hidden;
+    }
+
+    .success-bar-fill { height: 100%; border-radius: 3px; }
+
+    .success-pct { font-size: 12px; font-weight: 600; min-width: 40px; }
+
+    /* ── Error bar list ─────────────────────────────────── */
+    .error-bar-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+
+    .error-bar-item { display: flex; align-items: center; gap: 8px; }
+
+    .error-bar-label {
+      width: 116px; flex-shrink: 0;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 11px; color: #8b949e;
+    }
+
+    .error-bar-track {
+      flex: 1; height: 5px;
+      background: #21262d; border-radius: 3px; overflow: hidden;
+    }
+
+    .error-bar-fill { height: 100%; border-radius: 3px; }
+
+    .error-bar-count {
+      font-size: 12px; font-weight: 600;
+      color: #e6edf3; min-width: 24px; text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Topbar ───────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo-dot"></div>
+    <div class="topbar-title">
+      <strong>CAPY Dashboard</strong>
+      <span style="color:#30363d"> / </span>telemetry
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-indicator">
+      <div class="pulse-dot"></div>
+      Live
+    </div>
+    <div class="range-toggles">
+      <button class="range-btn" data-range="24h">24h</button>
+      <button class="range-btn" data-range="7d">7d</button>
+      <button class="range-btn active" data-range="30d">30d</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ── Row 1: KPI Cards ──────────────────────────────────────────────── -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-top-bar" style="background:#7c6af7"></div>
+      <div class="kpi-label">Total Interactions</div>
+      <div class="kpi-value" id="kpi-interactions">1,035</div>
+      <div class="kpi-delta delta-up" id="kpi-interactions-delta">↑ 12.4%</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-top-bar" style="background:#1d9e75"></div>
+      <div class="kpi-label">Unique Users</div>
+      <div class="kpi-value" id="kpi-users">80</div>
+      <div class="kpi-delta delta-up" id="kpi-users-delta">↑ 6.7%</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-top-bar" style="background:#3fb950"></div>
+      <div class="kpi-label">Success Rate</div>
+      <div class="kpi-value" id="kpi-success">82.7%</div>
+      <div class="kpi-delta delta-down" id="kpi-success-delta">↓ 1.2%</div>
+      <div class="kpi-sub">Apdex <span class="kpi-sub-green" id="kpi-apdex">0.84</span></div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-top-bar" style="background:#ef9f27"></div>
+      <div class="kpi-label">Avg Latency</div>
+      <div class="kpi-value" id="kpi-latency">158ms</div>
+      <div class="kpi-sub" id="kpi-percentiles">P95: 312ms · P99: 498ms</div>
+    </div>
+  </div>
+
+  <!-- ── Row 2: Timeseries + Right Panel ──────────────────────────────── -->
+  <div class="row-2">
+    <div class="panel">
+      <div class="panel-title">Interactions Over Time</div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#7c6af7"></div>Slash command</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#378add"></div>Button</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1d9e75"></div>Modal</div>
+      </div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="timeseriesChart"></canvas>
+      </div>
+    </div>
+
+    <div class="right-stack">
+      <div class="panel" style="padding:20px 16px">
+        <div class="panel-title">Active Right Now</div>
+        <div class="active-users-count" id="active-count">7</div>
+        <div class="active-users-label">
+          <div class="pulse-dot"></div>
+          users active in last 5 min
+        </div>
+      </div>
+
+      <div class="panel" style="flex:1">
+        <div class="panel-title">Error Rate Over Time</div>
+        <div class="chart-wrap" style="height:100px">
+          <canvas id="errorRateChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Row 3: Commands Table + Error Breakdown ──────────────────────── -->
+  <div class="row-3">
+    <div class="panel">
+      <div class="panel-title">Top Commands</div>
+      <table class="cmd-table">
+        <thead>
+          <tr>
+            <th>Command</th>
+            <th>Invocations</th>
+            <th>Avg / P95</th>
+            <th>Success Rate</th>
+          </tr>
+        </thead>
+        <tbody id="cmd-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Error Breakdown</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="errorDonutChart"></canvas>
+      </div>
+      <div class="error-bar-list" id="error-bar-list"></div>
+    </div>
+  </div>
+
+  <!-- ── Row 4: Interaction Types + Latency Histogram ─────────────────── -->
+  <div class="row-4">
+    <div class="panel">
+      <div class="panel-title">Interaction Types</div>
+      <div class="chart-wrap" style="height:180px">
+        <canvas id="interactionTypesChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Latency Distribution</div>
+      <div class="chart-wrap" style="height:180px">
+        <canvas id="latencyHistChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.main -->
+
+<script>
+// ── Global Chart.js defaults ─────────────────────────────────────────────────
+Chart.defaults.color                          = '#8b949e';
+Chart.defaults.font.family                    = '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+Chart.defaults.font.size                      = 11;
+Chart.defaults.borderColor                    = '#21262d';
+Chart.defaults.plugins.legend.display         = false;
+Chart.defaults.plugins.tooltip.backgroundColor = '#1c2128';
+Chart.defaults.plugins.tooltip.borderColor    = '#30363d';
+Chart.defaults.plugins.tooltip.borderWidth    = 1;
+Chart.defaults.plugins.tooltip.titleColor     = '#8b949e';
+Chart.defaults.plugins.tooltip.bodyColor      = '#e6edf3';
+Chart.defaults.plugins.tooltip.padding        = 10;
+Chart.defaults.plugins.tooltip.cornerRadius   = 6;
+
+// ── KPI data per range ───────────────────────────────────────────────────────
+const kpiData = {
+  '24h': { interactions: 87,   users: 14, success: 84.1, latency: 142, p95: 289, p99: 441, apdex: 0.86, intDelta:  12.4, userDelta:  6.7, successDelta: -1.2 },
+  '7d':  { interactions: 312,  users: 38, success: 81.9, latency: 151, p95: 298, p99: 479, apdex: 0.83, intDelta:  12.4, userDelta:  6.7, successDelta: -1.2 },
+  '30d': { interactions: 1035, users: 80, success: 82.7, latency: 158, p95: 312, p99: 498, apdex: 0.84, intDelta:  12.4, userDelta:  6.7, successDelta: -1.2 },
+};
+
+function updateKPIs(range) {
+  const d = kpiData[range];
+
+  document.getElementById('kpi-interactions').textContent = d.interactions.toLocaleString();
+  const intEl = document.getElementById('kpi-interactions-delta');
+  intEl.textContent = (d.intDelta > 0 ? '↑ ' : '↓ ') + Math.abs(d.intDelta) + '%';
+  intEl.className = 'kpi-delta ' + (d.intDelta > 0 ? 'delta-up' : 'delta-down');
+
+  document.getElementById('kpi-users').textContent = d.users;
+  const userEl = document.getElementById('kpi-users-delta');
+  userEl.textContent = (d.userDelta > 0 ? '↑ ' : '↓ ') + Math.abs(d.userDelta) + '%';
+  userEl.className = 'kpi-delta ' + (d.userDelta > 0 ? 'delta-up' : 'delta-down');
+
+  document.getElementById('kpi-success').textContent = d.success + '%';
+  const srEl = document.getElementById('kpi-success-delta');
+  srEl.textContent = (d.successDelta > 0 ? '↑ ' : '↓ ') + Math.abs(d.successDelta) + '%';
+  srEl.className = 'kpi-delta ' + (d.successDelta > 0 ? 'delta-up' : 'delta-down');
+  document.getElementById('kpi-apdex').textContent = d.apdex;
+
+  document.getElementById('kpi-latency').textContent = d.latency + 'ms';
+  document.getElementById('kpi-percentiles').textContent = `P95: ${d.p95}ms · P99: ${d.p99}ms`;
+}
+
+// ── Range toggle ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.range-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    updateKPIs(btn.dataset.range);
+  });
+});
+
+// ── 30-day date labels (Feb 15 – Mar 16 2026) ───────────────────────────────
+const labels30 = [];
+const baseDate = new Date('2026-02-15');
+for (let i = 0; i < 30; i++) {
+  const d = new Date(baseDate);
+  d.setDate(d.getDate() + i);
+  labels30.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+}
+
+// ── Interactions over time ───────────────────────────────────────────────────
+const slashData  = [22, 24, 28, 31, 33, 30, 25, 24, 26, 29, 32, 33, 28, 24, 23, 25, 28, 30, 32, 30, 27, 24, 26, 29, 31, 33, 34, 35, 34, 35];
+const buttonData = [ 8,  9, 11, 13, 14, 12,  9,  8, 10, 11, 13, 14, 11,  9,  8,  9, 11, 12, 13, 12, 10,  9, 10, 11, 12, 13, 14, 15, 14, 15];
+const modalData  = [ 1,  1,  2,  2,  3,  2,  1,  1,  2,  2,  2,  3,  2,  1,  1,  1,  2,  2,  3,  2,  1,  1,  2,  2,  2,  3,  3,  3,  2,  3];
+
+new Chart(document.getElementById('timeseriesChart'), {
+  type: 'line',
+  data: {
+    labels: labels30,
+    datasets: [
+      { label: 'Slash command', data: slashData,  borderColor: '#7c6af7', backgroundColor: 'rgba(124,106,247,0.12)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+      { label: 'Button',        data: buttonData, borderColor: '#378add', backgroundColor: 'rgba( 55,138,221,0.10)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+      { label: 'Modal',         data: modalData,  borderColor: '#1d9e75', backgroundColor: 'rgba( 29,158,117,0.10)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+    ],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    scales: {
+      x: { grid: { color: '#21262d' }, ticks: { maxTicksLimit: 8, maxRotation: 0, font: { size: 10 } } },
+      y: { grid: { color: '#21262d' }, beginAtZero: true },
+    },
+    plugins: { legend: { display: false } },
+  },
+});
+
+// ── Error rate mini chart ────────────────────────────────────────────────────
+const errorRateData = [16, 15, 18, 17, 19, 21, 15, 14, 17, 18, 16, 19, 20, 18, 15, 14, 16, 17, 18, 19, 17, 15, 16, 18, 17, 19, 18, 17, 18, 17];
+
+new Chart(document.getElementById('errorRateChart'), {
+  type: 'line',
+  data: {
+    labels: labels30,
+    datasets: [{ data: errorRateData, borderColor: '#f85149', backgroundColor: 'rgba(248,81,73,0.10)', fill: true, tension: 0.4, pointRadius: 0, borderWidth: 1.5 }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { display: false },
+      y: { grid: { color: '#21262d' }, min: 10, max: 25, ticks: { callback: v => v + '%', font: { size: 10 } } },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y + '%' } },
+    },
+  },
+});
+
+// ── Commands table ───────────────────────────────────────────────────────────
+const commands = [
+  { name: '/profile',  inv: 194, avg: 155, p95: 302, sr: 83.5 },
+  { name: '/ping',     inv: 191, avg: 160, p95: 318, sr: 84.3 },
+  { name: '/event',    inv: 172, avg: 158, p95: 310, sr: 83.1 },
+  { name: '/feedback', inv: 172, avg: 158, p95: 315, sr: 79.7 },
+  { name: '/purge',    inv: 161, avg: 158, p95: 308, sr: 83.9 },
+];
+
+function srColor(sr) {
+  if (sr < 80) return '#f85149';
+  if (sr < 83) return '#ef9f27';
+  return '#3fb950';
+}
+
+const tbody = document.getElementById('cmd-tbody');
+commands.forEach(c => {
+  const color = srColor(c.sr);
+  const warn  = c.sr < 80;
+  const tr    = document.createElement('tr');
+  if (warn) tr.classList.add('row-warn');
+  tr.innerHTML = `
+    <td>
+      <div class="cmd-name">
+        ${warn ? '<span class="cmd-warn">⚠</span>' : ''}
+        ${c.name}
+      </div>
+    </td>
+    <td style="color:#e6edf3">${c.inv.toLocaleString()}</td>
+    <td>
+      <div style="color:#e6edf3">${c.avg}ms</div>
+      <div class="latency-p95">P95: ${c.p95}ms</div>
+    </td>
+    <td>
+      <div class="success-bar-wrap">
+        <div class="success-bar-bg">
+          <div class="success-bar-fill" style="width:${c.sr}%;background:${color}"></div>
+        </div>
+        <span class="success-pct" style="color:${color}">${c.sr}%</span>
+      </div>
+    </td>`;
+  tbody.appendChild(tr);
+});
+
+// ── Error breakdown donut ────────────────────────────────────────────────────
+const errorData = [
+  { label: 'RuntimeError',    count: 98, color: '#ef9f27' },
+  { label: 'PermissionError', count: 54, color: '#f85149' },
+  { label: 'ValueError',      count: 24, color: '#ba7517' },
+];
+const totalErrors = errorData.reduce((s, e) => s + e.count, 0);
+
+new Chart(document.getElementById('errorDonutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: errorData.map(e => e.label),
+    datasets: [{
+      data: errorData.map(e => e.count),
+      backgroundColor: errorData.map(e => e.color),
+      borderColor: '#161b22',
+      borderWidth: 3,
+      hoverOffset: 4,
+    }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '68%',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed} (${Math.round(ctx.parsed / totalErrors * 100)}%)` } },
+    },
+  },
+});
+
+const errorBarList = document.getElementById('error-bar-list');
+errorData.forEach(e => {
+  const pct = Math.round(e.count / totalErrors * 100);
+  const div = document.createElement('div');
+  div.className = 'error-bar-item';
+  div.innerHTML = `
+    <div class="error-bar-label">${e.label}</div>
+    <div class="error-bar-track"><div class="error-bar-fill" style="width:${pct}%;background:${e.color}"></div></div>
+    <div class="error-bar-count">${e.count}</div>`;
+  errorBarList.appendChild(div);
+});
+
+// ── Interaction types horizontal bar ─────────────────────────────────────────
+new Chart(document.getElementById('interactionTypesChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Slash command', 'Button', 'Modal'],
+    datasets: [{
+      data: [800, 185, 50],
+      backgroundColor: ['#7c6af7', '#378add', '#1d9e75'],
+      borderRadius: 4,
+      borderSkipped: false,
+    }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    indexAxis: 'y',
+    scales: {
+      x: { grid: { color: '#21262d' }, beginAtZero: true },
+      y: { grid: { display: false } },
+    },
+    plugins: { legend: { display: false } },
+  },
+});
+
+// ── Latency distribution histogram ───────────────────────────────────────────
+const latencyBuckets = ['<50ms', '50–100', '100–150', '150–200', '200–250', '250–300', '300–400', '400–500', '>500ms'];
+const latencyValues  = [12, 48, 182, 390, 198, 112, 58, 22, 13];
+const latencyColors  = latencyValues.map((_, i) => i <= 3 ? '#7c6af7' : i <= 5 ? '#ef9f27' : '#f85149');
+
+new Chart(document.getElementById('latencyHistChart'), {
+  type: 'bar',
+  data: {
+    labels: latencyBuckets,
+    datasets: [{
+      data: latencyValues,
+      backgroundColor: latencyColors,
+      borderRadius: 3,
+      borderSkipped: false,
+    }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { grid: { color: '#21262d' }, ticks: { maxRotation: 35, minRotation: 35, font: { size: 10 } } },
+      y: { grid: { color: '#21262d' }, beginAtZero: true },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y} requests` } },
+    },
+  },
+});
+
+// ── Live active users counter ─────────────────────────────────────────────────
+let activeCount = 7;
+const activeEl = document.getElementById('active-count');
+setInterval(() => {
+  activeCount = Math.max(1, activeCount + (Math.random() < 0.5 ? 1 : -1));
+  activeEl.textContent = activeCount;
+}, 3000);
+
+// Init
+updateKPIs('30d');
+</script>
+</body>
+</html>
