@@ -1,6 +1,9 @@
+import logging
+
 import psycopg2
-from fastapi import APIRouter, Depends, HTTPException, Query, Security
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import APIRouter, Query
+
+log = logging.getLogger(__name__)
 
 from dashboard import database, mock_data
 from dashboard.config import settings
@@ -19,21 +22,12 @@ router = APIRouter()
 
 _RANGE_MAP = {"24h": 1, "7d": 7, "30d": 30}
 
-security = HTTPBearer(auto_error=False)
-
 
 def _range_days(range_str: str) -> int:
     return _RANGE_MAP.get(range_str, 7)
 
 
-def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(security)):
-    if not settings.telemetry_api_key:
-        return   # auth disabled in dev
-    if not credentials or credentials.credentials != settings.telemetry_api_key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-
-
-@router.post("/telemetry/batch", status_code=202, dependencies=[Depends(verify_api_key)])
+@router.post("/telemetry/batch", status_code=202)
 def post_batch(body: BatchRequest):
     if not body.events:
         return {"written": 0}
@@ -44,19 +38,17 @@ def post_batch(body: BatchRequest):
     written = 0
     errors = []
 
-    try:
-        with database.get_connection() as conn:
-            for idx, event in enumerate(body.events):
-                try:
-                    if event.type == "interaction":
-                        database.insert_interaction(conn, event)
-                    else:
-                        database.insert_completion(conn, event)
-                    written += 1
-                except Exception as exc:
-                    errors.append({"index": idx, "reason": str(exc)})
-    except psycopg2.Error as exc:
-        return {"written": 0, "rejected": len(body.events), "errors": [{"index": 0, "reason": str(exc)}]}
+    for idx, event in enumerate(body.events):
+        try:
+            with database.get_connection() as conn:
+                if event.type == "interaction":
+                    database.insert_interaction(conn, event)
+                else:
+                    database.insert_completion(conn, event)
+            written += 1
+        except Exception as exc:
+            log.error("Failed to insert event %d (type=%s): %s", idx, event.type, exc)
+            errors.append({"index": idx, "reason": str(exc)})
 
     response = {"written": written}
     if errors:
