@@ -5,8 +5,10 @@ from dashboard.config import settings
 from dashboard.models import (
     CommandStat,
     ErrorStat,
+    HeatmapPoint,
     InteractionTypeStat,
     MetricSummary,
+    RecentEvent,
     TimeSeriesPoint,
 )
 
@@ -190,5 +192,56 @@ def get_interaction_types(range_days: int) -> list[InteractionTypeStat]:
 
     return [
         InteractionTypeStat(interaction_type=row["interaction_type"], count=int(row["count"]))
+        for row in rows
+    ]
+
+
+def get_heatmap(range_days: int) -> list[HeatmapPoint]:
+    query = """
+        SELECT
+            EXTRACT(DOW FROM timestamp)::int AS dow,
+            EXTRACT(HOUR FROM timestamp)::int AS hour,
+            COUNT(*) AS count
+        FROM telemetry_interactions
+        WHERE timestamp > NOW() - (%s || ' days')::INTERVAL
+        GROUP BY dow, hour
+        ORDER BY dow, hour
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (str(range_days),))
+            rows = cur.fetchall()
+    return [HeatmapPoint(dow=row["dow"], hour=row["hour"], count=int(row["count"])) for row in rows]
+
+
+def get_recent() -> list[RecentEvent]:
+    query = """
+        SELECT
+            i.timestamp,
+            i.user_id,
+            i.interaction_type,
+            i.command_name,
+            c.status,
+            c.duration_ms,
+            c.error_type
+        FROM telemetry_interactions i
+        LEFT JOIN telemetry_completions c ON i.correlation_id = c.correlation_id
+        ORDER BY i.timestamp DESC
+        LIMIT 50
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+    return [
+        RecentEvent(
+            timestamp=row["timestamp"].isoformat(),
+            user_id="..." + str(row["user_id"])[-4:],
+            interaction_type=row["interaction_type"],
+            command_name=row["command_name"],
+            status=row["status"],
+            duration_ms=float(row["duration_ms"]) if row["duration_ms"] is not None else None,
+            error_type=row["error_type"],
+        )
         for row in rows
     ]
