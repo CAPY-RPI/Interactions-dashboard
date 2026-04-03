@@ -103,3 +103,11 @@ def get_interaction_types(range: str = Query("7d", description="Time range: 24h,
     if settings.use_mock:
         return mock_data.get_interaction_types(days)
     return database.get_interaction_types(days)
+
+
+@router.get("/commands/{command_name}/breakdown", response_model=list[InteractionTypeStat])
+def get_command_breakdown(command_name: str, range: str = Query("7d", description="Time range: 24h, 7d, or 30d")):
+    days = _range_days(range)
+    if settings.use_mock:
+        return mock_data.get_command_breakdown(command_name, days)
+    return database.get_command_breakdown(command_name, days)

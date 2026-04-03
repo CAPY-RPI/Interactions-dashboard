@@ -218,6 +218,18 @@ def get_errors(days: int) -> list[ErrorStat]:
     ]
 
 
+def get_command_breakdown(command_name: str, days: int) -> list[InteractionTypeStat]:
+    records = [r for r in _filter(days) if r["command_name"] == command_name]
+    counts: dict[str, int] = {}
+    for r in records:
+        itype = r["interaction_type"]
+        counts[itype] = counts.get(itype, 0) + 1
+    return [
+        InteractionTypeStat(interaction_type=itype, count=c)
+        for itype, c in sorted(counts.items(), key=lambda x: -x[1])
+    ]
+
+
 def get_interaction_types(days: int) -> list[InteractionTypeStat]:
     records = _filter(days)
     counts: dict[str, int] = {}

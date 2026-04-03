@@ -155,6 +155,25 @@ def get_errors(range_days: int) -> list[ErrorStat]:
     return [ErrorStat(error_type=row["error_type"], count=int(row["count"])) for row in rows]
 
 
+def get_command_breakdown(command_name: str, range_days: int) -> list[InteractionTypeStat]:
+    query = """
+        SELECT interaction_type, COUNT(*) AS count
+        FROM telemetry_interactions
+        WHERE command_name = %s
+          AND timestamp > NOW() - (%s || ' days')::INTERVAL
+        GROUP BY interaction_type
+        ORDER BY count DESC
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (command_name, str(range_days)))
+            rows = cur.fetchall()
+    return [
+        InteractionTypeStat(interaction_type=row["interaction_type"], count=int(row["count"]))
+        for row in rows
+    ]
+
+
 def get_interaction_types(range_days: int) -> list[InteractionTypeStat]:
     query = """
         SELECT interaction_type, COUNT(*) AS count

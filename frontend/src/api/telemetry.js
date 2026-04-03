@@ -24,3 +24,17 @@ export function fetchErrors(range) {
 export function fetchInteractionTypes(range) {
   return api.get('/interaction-types', { params: { range } }).then((r) => r.data)
 }
+
+export function fetchRecent() {
+  return api.get('/recent').then((r) => r.data)
+}
+
+export function fetchHeatmap(range) {
+  return api.get('/heatmap', { params: { range } }).then((r) => r.data)
+}
+
+export function fetchCommandBreakdown(commandName, range) {
+  return api
+    .get(`/commands/${encodeURIComponent(commandName)}/breakdown`, { params: { range } })
+    .then((r) => r.data)
+}
