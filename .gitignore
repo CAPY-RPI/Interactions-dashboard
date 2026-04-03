@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# Docs (local only)
+docs/
+
+# Environment
+.env
+
+# Node
+node_modules/
+dist/
