@@ -13,6 +13,7 @@ from dashboard.models import (
     InteractionTypeStat,
     MetricSummary,
     RecentEvent,
+    RecentEventGroup,
     TimeSeriesPoint,
 )
 
@@ -71,6 +72,7 @@ def get_recent() -> list[RecentEvent]:
             i.user_id,
             i.interaction_type,
             i.command_name,
+            i.options,
             c.status,
             c.duration_ms,
             c.error_type
@@ -90,6 +92,7 @@ def get_recent() -> list[RecentEvent]:
             user_id="..." + str(row["user_id"])[-4:],
             interaction_type=row["interaction_type"],
             command_name=row["command_name"],
+            options=row["options"] if row["options"] else {},
             status=row["status"],
             duration_ms=float(row["duration_ms"]) if row["duration_ms"] is not None else None,
             error_type=row["error_type"],

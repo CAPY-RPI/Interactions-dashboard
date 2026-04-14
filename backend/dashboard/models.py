@@ -75,6 +75,12 @@ class RecentEvent(BaseModel):
     status: str | None
     duration_ms: float | None
     error_type: str | None
+    options: dict = {}
+
+
+class RecentEventGroup(BaseModel):
+    root: RecentEvent
+    children: list[RecentEvent] = []
 
 
 class HeatmapPoint(BaseModel):

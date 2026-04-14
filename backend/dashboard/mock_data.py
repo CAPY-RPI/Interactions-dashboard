@@ -27,6 +27,43 @@ _ERROR_TYPES = ["RuntimeError", "ValueError", "PermissionError"]
 _GUILD_NAMES = ["CAPY Server", "RCOS Discord", "Test Server"]
 _BOT_VERSIONS = ["1.2.0", "1.2.1", "1.3.0"]
 
+_EVENT_NAMES = ["Game Night", "Study Hall", "Hackathon Kickoff", "Code Review Session", "Movie Night"]
+_FEEDBACK_TYPES = ["bug", "feature", "general"]
+_FEEDBACK_TEXTS = [
+    "The bot crashed when I used it in DMs",
+    "Would love a way to search past events",
+    "Works great, thanks!",
+    "Latency feels high during peak hours",
+    "Add support for scheduling recurring events",
+]
+_USERNAMES = ["alice", "bob", "charlie", "dave", "eve", "frank", "grace", "heidi"]
+
+
+def _make_options(rng: random.Random, cmd: str | None) -> dict:
+    """Generate realistic options for a given command name."""
+    if not cmd:
+        return {}
+    if cmd == "ping":
+        return {}
+    if cmd == "profile":
+        return {"user": f"@{rng.choice(_USERNAMES)}"}
+    if cmd == "event":
+        return {
+            "name": rng.choice(_EVENT_NAMES),
+            "date": f"2026-{rng.randint(1, 12):02d}-{rng.randint(1, 28):02d}",
+        }
+    if cmd == "feedback":
+        return {
+            "type": rng.choice(_FEEDBACK_TYPES),
+            "text": rng.choice(_FEEDBACK_TEXTS),
+        }
+    if cmd == "purge":
+        opts: dict = {"count": rng.randint(1, 50)}
+        if rng.random() < 0.4:
+            opts["user"] = f"@{rng.choice(_USERNAMES)}"
+        return opts
+    return {}
+
 # Fixed pool of 80 user IDs so we get realistic repeat-user counts
 _USER_POOL = [
     100_000_000 + i * 9_999_983  # deterministic spread, avoids obvious patterns
@@ -93,6 +130,7 @@ def _build_dataset() -> list[dict]:
                 "interaction_type": itype,
                 "user_id": user_id,
                 "command_name": cmd,
+                "options": _make_options(rng, cmd if itype == "slash_command" else None),
                 "guild_name": guild_name,
                 "status": status,
                 "duration_ms": duration_ms,
@@ -219,6 +257,7 @@ def get_recent() -> list[RecentEvent]:
             user_id="..." + str(r["user_id"])[-4:],
             interaction_type=r["interaction_type"],
             command_name=r["command_name"],
+            options=r.get("options", {}),
             status=r["status"],
             duration_ms=r["duration_ms"],
             error_type=r["error_type"],
