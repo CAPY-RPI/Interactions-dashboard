@@ -1,0 +1,52 @@
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER:     capy
+      POSTGRES_PASSWORD: capy
+      POSTGRES_DB:       capy_dev
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../discord-bot/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./init/02-grants.sql:/docker-entrypoint-initdb.d/02-grants.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U capy -d capy_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - capy-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://capy:capy@postgres:5432/capy_dev
+      USE_MOCK:     "false"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - capy-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - capy-net
+
+networks:
+  capy-net:
+    driver: bridge
+
+volumes:
+  postgres-data:

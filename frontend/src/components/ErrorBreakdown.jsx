@@ -36,7 +36,7 @@ export default function ErrorBreakdown({ data }) {
   const hasData = data && data.length > 0
 
   return (
-    <div className="bg-[#161b27] rounded-xl border border-[#2a3147] p-5 flex flex-col">
+    <div className="bg-[#161b27] rounded-xl border border-[#2a3147] p-5 flex flex-col h-full">
       <h2 className="text-[#f1f5f9] font-semibold text-sm uppercase tracking-wider mb-4">
         Error Breakdown
       </h2>

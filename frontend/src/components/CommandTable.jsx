@@ -23,7 +23,7 @@ export default function CommandTable({ data }) {
   const sorted = [...(data || [])].sort((a, b) => b.invocations - a.invocations)
 
   return (
-    <div className="bg-[#161b27] rounded-xl border border-[#2a3147] overflow-hidden">
+    <div className="bg-[#161b27] rounded-xl border border-[#2a3147] overflow-hidden h-full">
       <div className="px-5 py-4 border-b border-[#2a3147]">
         <h2 className="text-[#f1f5f9] font-semibold text-sm uppercase tracking-wider">
           Commands

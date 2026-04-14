@@ -12,6 +12,7 @@ from datetime import date, datetime, timedelta, timezone
 from dashboard.models import (
     CommandStat,
     ErrorStat,
+    HeatmapPoint,
     InteractionTypeStat,
     MetricSummary,
     RecentEvent,
@@ -223,6 +224,21 @@ def get_recent() -> list[RecentEvent]:
             error_type=r["error_type"],
         )
         for r in records
+    ]
+
+
+def get_heatmap(days: int) -> list[HeatmapPoint]:
+    records = _filter(days)
+    counts: dict[tuple[int, int], int] = {}
+    for r in records:
+        # Python weekday(): 0=Mon, 6=Sun → convert to Postgres DOW: 0=Sun, 6=Sat
+        dow = (r["timestamp"].weekday() + 1) % 7
+        hour = r["timestamp"].hour
+        key = (dow, hour)
+        counts[key] = counts.get(key, 0) + 1
+    return [
+        HeatmapPoint(dow=dow, hour=hour, count=count)
+        for (dow, hour), count in sorted(counts.items())
     ]
 
 

@@ -6,6 +6,7 @@ import CommandTable from '../components/CommandTable.jsx'
 import ErrorBreakdown from '../components/ErrorBreakdown.jsx'
 import InteractionTypeChart from '../components/InteractionTypeChart.jsx'
 import ActivityFeed from '../components/ActivityFeed.jsx'
+import UsageHeatmap from '../components/UsageHeatmap.jsx'
 import {
   fetchMetrics,
   fetchCommands,
@@ -13,6 +14,7 @@ import {
   fetchErrors,
   fetchInteractionTypes,
   fetchRecent,
+  fetchHeatmap,
 } from '../api/telemetry.js'
 
 function SkeletonCard() {
@@ -87,6 +89,7 @@ export default function Dashboard() {
   const [timeseries, setTimeseries] = useState(null)
   const [errors, setErrors] = useState(null)
   const [interactionTypes, setInteractionTypes] = useState(null)
+  const [heatmap, setHeatmap] = useState(null)
   const [recent, setRecent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -95,12 +98,13 @@ export default function Dashboard() {
     setLoading(true)
     setError(null)
     try {
-      const [m, c, ts, e, it, rec] = await Promise.all([
+      const [m, c, ts, e, it, hm, rec] = await Promise.all([
         fetchMetrics(r),
         fetchCommands(r),
         fetchTimeseries(r),
         fetchErrors(r),
         fetchInteractionTypes(r),
+        fetchHeatmap(r),
         fetchRecent(),
       ])
       setMetrics(m)
@@ -108,6 +112,7 @@ export default function Dashboard() {
       setTimeseries(ts)
       setErrors(e)
       setInteractionTypes(it)
+      setHeatmap(hm)
       setRecent(rec)
     } catch (err) {
       setError(
@@ -123,12 +128,13 @@ export default function Dashboard() {
   const refreshAll = useCallback(async (r) => {
     // Silent refresh — no loading skeletons, errors don't overwrite existing data
     try {
-      const [m, c, ts, e, it, rec] = await Promise.all([
+      const [m, c, ts, e, it, hm, rec] = await Promise.all([
         fetchMetrics(r),
         fetchCommands(r),
         fetchTimeseries(r),
         fetchErrors(r),
         fetchInteractionTypes(r),
+        fetchHeatmap(r),
         fetchRecent(),
       ])
       setMetrics(m)
@@ -136,6 +142,7 @@ export default function Dashboard() {
       setTimeseries(ts)
       setErrors(e)
       setInteractionTypes(it)
+      setHeatmap(hm)
       setRecent(rec)
     } catch {
       // Silently ignore — stale data is better than an error banner on auto-refresh
@@ -146,9 +153,9 @@ export default function Dashboard() {
     loadAll(range)
   }, [range, loadAll])
 
-  // Auto-refresh all data every 30s
+  // Auto-refresh all data every 0.001s
   useEffect(() => {
-    const id = setInterval(() => refreshAll(range), 30_000)
+    const id = setInterval(() => refreshAll(range), 2_000)
     return () => clearInterval(id)
   }, [range, refreshAll])
 
@@ -185,14 +192,14 @@ export default function Dashboard() {
 
         {/* Row 3: Command table + Error breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 h-full">
             {loading ? (
               <SkeletonBlock height="h-72" />
             ) : (
               commands && <CommandTable data={commands} />
             )}
           </div>
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 h-full">
             {loading ? (
               <SkeletonBlock height="h-72" />
             ) : (
@@ -201,13 +208,22 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Row 4: Interaction type chart */}
+        {/* Row 4: Interaction type chart + Peak usage heatmap */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {loading ? (
-            <SkeletonBlock height="h-64" />
-          ) : (
-            interactionTypes && <InteractionTypeChart data={interactionTypes} />
-          )}
+          <div>
+            {loading ? (
+              <SkeletonBlock height="h-64" />
+            ) : (
+              interactionTypes && <InteractionTypeChart data={interactionTypes} />
+            )}
+          </div>
+          <div>
+            {loading ? (
+              <SkeletonBlock height="h-64" />
+            ) : (
+              heatmap && <UsageHeatmap data={heatmap} />
+            )}
+          </div>
         </div>
 
         {/* Row 5: Activity feed — full width */}
