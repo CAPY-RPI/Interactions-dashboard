@@ -93,6 +93,8 @@ export default function Dashboard() {
   const [recent, setRecent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [fetchError, setFetchError] = useState(false)
 
   const loadAll = useCallback(async (r) => {
     setLoading(true)
@@ -144,8 +146,11 @@ export default function Dashboard() {
       setInteractionTypes(it)
       setHeatmap(hm)
       setRecent(rec)
+      setLastUpdated(new Date())
+      setFetchError(false)
     } catch {
       // Silently ignore — stale data is better than an error banner on auto-refresh
+      setFetchError(true)
     }
   }, [])
 

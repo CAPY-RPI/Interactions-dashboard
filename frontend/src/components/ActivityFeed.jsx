@@ -49,7 +49,7 @@ function OptionsRow({ options, colSpan }) {
 export default function ActivityFeed({ data }) {
   const [limit, setLimit] = useState(25)
   const [expanded, setExpanded] = useState(new Set())
-  const visible = data.slice(0, limit)
+  const visible = data.filter(r => r.interaction_type === 'slash_command').slice(0, limit)
 
   function toggleRow(i) {
     setExpanded(prev => {
