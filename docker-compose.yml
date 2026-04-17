@@ -8,7 +8,7 @@ services:
       POSTGRES_DB:       capy_dev
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ../discord-bot/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./init/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./init/02-grants.sql:/docker-entrypoint-initdb.d/02-grants.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U capy -d capy_dev"]
