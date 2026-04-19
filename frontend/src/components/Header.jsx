@@ -1,6 +1,6 @@
 const RANGES = ['24h', '7d', '30d']
 
-export default function Header({ range, onRangeChange }) {
+export default function Header({ range, onRangeChange, lastUpdated, fetchError }) {
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b border-[#2a3147] bg-[#161b27]">
       <div className="flex items-center gap-3">

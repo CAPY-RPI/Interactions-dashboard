@@ -166,7 +166,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0f1117] text-[#f1f5f9]">
-      <Header range={range} onRangeChange={setRange} />
+      <Header range={range} onRangeChange={setRange} lastUpdated={lastUpdated} fetchError={fetchError} />
 
       {error && <ErrorBanner message={error} />}
 
