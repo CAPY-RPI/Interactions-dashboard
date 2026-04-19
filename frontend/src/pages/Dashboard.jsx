@@ -233,7 +233,7 @@ export default function Dashboard() {
 
         {/* Row 5: Activity feed — full width */}
         <div>
-          {loading ? <SkeletonBlock height="h-96" /> : <ActivityFeed data={recent || []} />}
+          {loading ? <SkeletonBlock height="h-96" /> : <ActivityFeed data={(recent || []).filter(r => r.interaction_type === 'slash_command')} />}
         </div>
       </main>
     </div>

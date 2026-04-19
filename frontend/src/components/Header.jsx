@@ -13,7 +13,9 @@ function LiveIndicator({ lastUpdated, fetchError }) {
     return () => clearInterval(id)
   }, [lastUpdated])
 
-  const dotColor = fetchError
+  const isStale = lastUpdated && secondsAgo !== null && secondsAgo > 10
+
+  const dotColor = fetchError || isStale
     ? 'bg-[#f59e0b]'
     : lastUpdated
     ? 'bg-[#10b981]'
