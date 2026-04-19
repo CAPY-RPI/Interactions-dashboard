@@ -93,6 +93,8 @@ export default function Dashboard() {
   const [recent, setRecent] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [fetchError, setFetchError] = useState(false)
 
   const loadAll = useCallback(async (r) => {
     setLoading(true)
@@ -144,8 +146,11 @@ export default function Dashboard() {
       setInteractionTypes(it)
       setHeatmap(hm)
       setRecent(rec)
+      setLastUpdated(new Date())
+      setFetchError(false)
     } catch {
       // Silently ignore — stale data is better than an error banner on auto-refresh
+      setFetchError(true)
     }
   }, [])
 
@@ -161,7 +166,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0f1117] text-[#f1f5f9]">
-      <Header range={range} onRangeChange={setRange} />
+      <Header range={range} onRangeChange={setRange} lastUpdated={lastUpdated} fetchError={fetchError} />
 
       {error && <ErrorBanner message={error} />}
 
@@ -228,7 +233,7 @@ export default function Dashboard() {
 
         {/* Row 5: Activity feed — full width */}
         <div>
-          {loading ? <SkeletonBlock height="h-96" /> : <ActivityFeed data={recent || []} />}
+          {loading ? <SkeletonBlock height="h-96" /> : <ActivityFeed data={(recent || []).filter(r => r.interaction_type === 'slash_command')} />}
         </div>
       </main>
     </div>
